@@ -808,7 +808,7 @@ int ZEXPORT deflate (strm, flush)
                     }
                 }
                 val = s->gzhead->name[s->gzindex++];
-                put_byte(s, val);
+                put_byte(s, (Bytef) val);
             } while (val != 0);
             if (s->gzhead->hcrc && s->pending > beg)
                 strm->adler = crc32(strm->adler, s->pending_buf + beg,
@@ -839,7 +839,7 @@ int ZEXPORT deflate (strm, flush)
                     }
                 }
                 val = s->gzhead->comment[s->gzindex++];
-                put_byte(s, val);
+                put_byte(s, (Bytef) val);
             } while (val != 0);
             if (s->gzhead->hcrc && s->pending > beg)
                 strm->adler = crc32(strm->adler, s->pending_buf + beg,
@@ -1668,8 +1668,8 @@ local block_state deflate_fast(s, flush)
         if (s->match_length >= MIN_MATCH) {
             check_match(s, s->strstart, s->match_start, s->match_length);
 
-            _tr_tally_dist(s, s->strstart - s->match_start,
-                           s->match_length - MIN_MATCH, bflush);
+            _tr_tally_dist(s, (uch) (s->strstart - s->match_start),
+                           (uch) (s->match_length - MIN_MATCH), bflush);
 
             s->lookahead -= s->match_length;
 
@@ -1793,8 +1793,8 @@ local block_state deflate_slow(s, flush)
 
             check_match(s, s->strstart-1, s->prev_match, s->prev_length);
 
-            _tr_tally_dist(s, s->strstart -1 - s->prev_match,
-                           s->prev_length - MIN_MATCH, bflush);
+            _tr_tally_dist(s, (uch) (s->strstart -1 - s->prev_match),
+                           (uch) (s->prev_length - MIN_MATCH), bflush);
 
             /* Insert in hash table all strings up to the end of the match.
              * strstart-1 and strstart are already inserted. If there is not
@@ -1903,7 +1903,7 @@ local block_state deflate_rle(s, flush)
         if (s->match_length >= MIN_MATCH) {
             check_match(s, s->strstart, s->strstart - 1, s->match_length);
 
-            _tr_tally_dist(s, 1, s->match_length - MIN_MATCH, bflush);
+            _tr_tally_dist(s, 1, (uch) (s->match_length - MIN_MATCH), bflush);
 
             s->lookahead -= s->match_length;
             s->strstart += s->match_length;
