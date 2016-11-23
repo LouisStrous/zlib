@@ -1,0 +1,3 @@
+# By default, check out text files using OS native line endings, check
+# in using LF only.
+* text=auto
