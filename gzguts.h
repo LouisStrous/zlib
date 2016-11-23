@@ -24,6 +24,10 @@
 #  include <string.h>
 #  include <stdlib.h>
 #  include <limits.h>
+#else
+#  ifdef __MVS__
+#    include <string.h>
+#  endif
 #endif
 #include <fcntl.h>
 
