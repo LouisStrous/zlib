@@ -5,19 +5,42 @@
 
 #include "gzguts.h"
 
-#if defined(_WIN32) && !defined(__BORLANDC__)
-#  define LSEEK _lseeki64
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The FILE*-based code is new by IntelliMagic; the
+ * file-descriptor-based code already existed. */
+#ifdef ZLIB_USE_FILE_POINTERS
+#  if defined(_WIN32) && !defined(__BORLANDC__)
+#    define FSEEK _fseeki64
+#  else
+#    if defined(_LARGEFILE64_SOURCE) && _LFS64_LARGEFILE-0
+#      define FSEEK fseek64
+#    else
+#      define FSEEK fseek
+#    endif
+#  endif
 #else
-#if defined(_LARGEFILE64_SOURCE) && _LFS64_LARGEFILE-0
-#  define LSEEK lseek64
-#else
-#  define LSEEK lseek
+#  if defined(_WIN32) && !defined(__BORLANDC__)
+#    define LSEEK _lseeki64
+#  else
+#    if defined(_LARGEFILE64_SOURCE) && _LFS64_LARGEFILE-0
+#      define LSEEK lseek64
+#    else
+#      define LSEEK lseek
+#    endif
+#  endif
 #endif
-#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
 
 /* Local functions */
 local void gz_reset OF((gz_statep));
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The four-parameter version is new. */
+#if ZLIB_USE_FILE_POINTERS
+local gzFile gz_open OF((const void *, int, FILE* fp, const char *));
+#else
 local gzFile gz_open OF((const void *, int, const char *));
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
 
 #if defined UNDER_CE
 
@@ -88,14 +111,32 @@ local void gz_reset(state)
 }
 
 /* Open a gzip file either by name or file descriptor. */
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The four-parameter version is new. */
+#ifdef ZLIB_USE_FILE_POINTERS
+local gzFile gz_open(path, fd, fp, mode)
+#else
 local gzFile gz_open(path, fd, mode)
+#endif
     const void *path;
     int fd;
+#ifdef ZLIB_USE_FILE_POINTERS
+    FILE* fp;
+#endif
     const char *mode;
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
 {
     gz_statep state;
     size_t len;
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The FILE*-based code is new by IntelliMagic; the
+ * file-descriptor-based code already existed. */
+#ifdef ZLIB_USE_FILE_POINTERS
+    char* fflag;
+#else
     int oflag;
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
 #ifdef O_CLOEXEC
     int cloexec = 0;
 #endif
@@ -217,6 +258,18 @@ local gzFile gz_open(path, fd, mode)
 #endif
 
     /* compute the flags for open() */
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The FILE*-based code is new by IntelliMagic; the
+ * file-descriptor-based code already existed. */
+#ifdef ZLIB_USE_FILE_POINTERS
+        if (state->mode == GZ_READ) {
+          fflag = "r";
+        } else if (state->mode == GZ_WRITE) {
+          fflag = "w";
+        } else {                /* GZ_APPEND */
+          fflag = "a";
+        }
+#else
     oflag =
 #ifdef O_LARGEFILE
         O_LARGEFILE |
@@ -236,24 +289,73 @@ local gzFile gz_open(path, fd, mode)
           (state->mode == GZ_WRITE ?
            O_TRUNC :
            O_APPEND)));
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
 
     /* open the file with the appropriate flags (or just use fd) */
+
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The FILE*-based code is new by IntelliMagic; the
+ * file-descriptor-based code already existed. */
+#ifdef ZLIB_USE_FILE_POINTERS
+    switch (fd) {
+      case -2:
+#  ifdef _WIN32
+      {
+        wchar_t wfflag[2];
+        swprintf(wfflag, 2, L"%hs", fflag);
+        state->fp = _wfopen(path, wfflag);
+      }
+        break;
+#  endif
+      case -1:
+        state->fp = fopen(path, fflag);
+        if (state->fp) {
+          setbuf(state->fp, NULL); /* turn off buffering */
+        }
+        break;
+      case -3:                  /* use already opened file */
+        state->fp = fp;
+        break;
+      default:
+        state->fp = fdopen(fd, fflag);
+        if (state->fp) {
+          setbuf(state->fp, NULL); /* turn off buffering */
+        }
+        break;
+    }
+    if (!state->fp) {
+      free(state->path);
+      free(state);
+      return NULL;
+    }
+#else
     state->fd = fd > -1 ? fd : (
-#ifdef _WIN32
+#  ifdef _WIN32
         fd == -2 ? _wopen(path, oflag, 0666) :
-#endif
+#  endif
         open((const char *)path, oflag, 0666));
     if (state->fd == -1) {
         free(state->path);
         free(state);
         return NULL;
     }
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
     if (state->mode == GZ_APPEND)
         state->mode = GZ_WRITE;         /* simplify later checks */
 
     /* save the current position for rewinding (only if reading) */
     if (state->mode == GZ_READ) {
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The FILE*-based code is new by IntelliMagic; the
+ * file-descriptor-based code already existed. */
+#ifdef ZLIB_USE_FILE_POINTERS
+        state->start = FSEEK(state->fp, 0, SEEK_CUR);
+#else
         state->start = LSEEK(state->fd, 0, SEEK_CUR);
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
         if (state->start == -1) state->start = 0;
     }
 
@@ -269,7 +371,14 @@ gzFile ZEXPORT gzopen(path, mode)
     const char *path;
     const char *mode;
 {
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The four-argument version is new. */
+#ifdef ZLIB_USE_FILE_POINTERS
+    return gz_open(path, -1, NULL, mode);
+#else
     return gz_open(path, -1, mode);
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
 }
 
 /* -- see zlib.h -- */
@@ -277,8 +386,27 @@ gzFile ZEXPORT gzopen64(path, mode)
     const char *path;
     const char *mode;
 {
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The four-argument version is new. */
+#ifdef ZLIB_USE_FILE_POINTERS
+    return gz_open(path, -1, NULL, mode);
+#else
     return gz_open(path, -1, mode);
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
 }
+
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+#ifdef ZLIB_USE_FILE_POINTERS
+gzFile ZEXPORT gzopened(path, mode, fp)
+  const char *path;
+  const char *mode;
+  FILE *fp;
+{
+  return gz_open(path, -3, fp, mode);
+}
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
 
 /* -- see zlib.h -- */
 gzFile ZEXPORT gzdopen(fd, mode)
@@ -295,7 +423,14 @@ gzFile ZEXPORT gzdopen(fd, mode)
 #else
     sprintf(path, "<fd:%d>", fd);   /* for debugging */
 #endif
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The four-argument version is new. */
+#ifdef ZLIB_USE_FILE_POINTERS
+    gz = gz_open(path, fd, NULL, mode);
+#else
     gz = gz_open(path, fd, mode);
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
     free(path);
     return gz;
 }
@@ -306,7 +441,14 @@ gzFile ZEXPORT gzopen_w(path, mode)
     const wchar_t *path;
     const char *mode;
 {
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The four-argument version is new. */
+#ifdef ZLIB_USE_FILE_POINTERS
+    return gz_open(path, -2, NULL, mode);
+#else
     return gz_open(path, -2, mode);
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
 }
 #endif
 
@@ -352,8 +494,17 @@ int ZEXPORT gzrewind(file)
         return -1;
 
     /* back up and start over */
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The FILE*-based code is new by IntelliMagic; the
+ * file-descriptor-based code already existed. */
+#ifdef ZLIB_USE_FILE_POINTERS
+    if (FSEEK(state->fp, state->start, SEEK_SET) == -1)
+        return -1;
+#else
     if (LSEEK(state->fd, state->start, SEEK_SET) == -1)
         return -1;
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
     gz_reset(state);
     return 0;
 }
@@ -393,7 +544,15 @@ z_off64_t ZEXPORT gzseek64(file, offset, whence)
     /* if within raw area while reading, just go there */
     if (state->mode == GZ_READ && state->how == COPY &&
             state->x.pos + offset >= 0) {
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The FILE*-based code is new by IntelliMagic; the
+ * file-descriptor-based code already existed. */
+#ifdef ZLIB_USE_FILE_POINTERS
+        ret = FSEEK(state->fp, offset - state->x.have, SEEK_CUR);
+#else
         ret = LSEEK(state->fd, offset - state->x.have, SEEK_CUR);
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
         if (ret == -1)
             return -1;
         state->x.have = 0;
@@ -489,7 +648,15 @@ z_off64_t ZEXPORT gzoffset64(file)
         return -1;
 
     /* compute and return effective offset in file */
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The FILE*-based code is new by IntelliMagic; the
+ * file-descriptor-based code already existed. */
+#ifdef ZLIB_USE_FILE_POINTERS
+    offset = FSEEK(state->fp, 0, SEEK_CUR);
+#else
     offset = LSEEK(state->fd, 0, SEEK_CUR);
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
     if (offset == -1)
         return -1;
     if (state->mode == GZ_READ)             /* reading */

@@ -170,7 +170,15 @@ typedef struct {
                             /* x.pos: current position in uncompressed data */
         /* used for both reading and writing */
     int mode;               /* see gzip modes above */
+/* START ADDITION BY INTELLIMAGIC, info@intellimagic.com */
+/* The "int fd;" statement already existed.  The "FILE* fp;" statement
+ * is due to IntelliMagic. */
+#ifdef ZLIB_USE_FILE_POINTERS
+    FILE* fp;               /* file pointer */
+#else
     int fd;                 /* file descriptor */
+#endif
+/* END ADDITION BY INTELLIMAGIC, info@intellimagic.com */
     char *path;             /* path or fd for error messages */
     unsigned size;          /* buffer size, zero if not allocated yet */
     unsigned want;          /* requested buffer size, default is GZBUFSIZE */

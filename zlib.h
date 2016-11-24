@@ -44,6 +44,22 @@ extern "C" {
 #define ZLIB_VER_REVISION 8
 #define ZLIB_VER_SUBREVISION 0
 
+/* START ADDITION BY INTELLIMAGIC, info@intellimagic.com */
+#include <stdio.h>  /* for FILE */
+
+/*
+  the ZLIB_USE_FILE_POINTERS macro determines whether zlib does I/O
+  via file pointers or via file descriptors.  I/O via file descriptors
+  is not supported for z/OS data sets, so for them access via file
+  pointers is essential.
+
+  If the macro is defined, then zlib does its I/O via file pointers,
+  and otherwise via file descriptors.
+
+  #define ZLIB_USE_FILE_POINTERS
+  */
+/* END ADDITION BY INTELLIMAGIC, info@intellimagic.com */
+
 /*
     The 'zlib' compression library provides in-memory compression and
   decompression functions, including integrity checks of the uncompressed data.
@@ -1260,6 +1276,17 @@ ZEXTERN gzFile ZEXPORT gzopen OF((const char *path, const char *mode));
    errno can be checked to determine if the reason gzopen failed was that the
    file could not be opened.
 */
+
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+#ifdef ZLIB_USE_FILE_POINTERS
+ZEXTERN gzFile ZEXPORT gzopened OF((const char *path, const char *mode, FILE* fp));
+#endif
+/*
+  Like gzopen, but based on an already opened file pointer, for
+  reading or writing at its current position.  This allows for
+  decompressing data that is preceded by some uncompressed data.
+*/
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
 
 ZEXTERN gzFile ZEXPORT gzdopen OF((int fd, const char *mode));
 /*

@@ -27,7 +27,15 @@ local int gz_load(state, buf, len, have)
 
     *have = 0;
     do {
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The FILE*-based code is new by IntelliMagic; the
+ * file-descriptor-based code already existed. */
+#ifdef ZLIB_USE_FILE_POINTERS
+        ret = fread(buf + *have, 1, len - *have, state->fp);
+#else
         ret = read(state->fd, buf + *have, len - *have);
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
         if (ret <= 0)
             break;
         *have += ret;
@@ -588,7 +596,15 @@ int ZEXPORT gzclose_r(file)
     err = state->err == Z_BUF_ERROR ? Z_BUF_ERROR : Z_OK;
     gz_error(state, Z_OK, NULL);
     free(state->path);
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The FILE*-based code is new by IntelliMagic; the
+ * file-descriptor-based code already existed. */
+#ifdef ZLIB_USE_FILE_POINTERS
+    ret = fclose(state->fp);
+#else
     ret = close(state->fd);
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
     free(state);
     return ret ? Z_ERRNO : err;
 }

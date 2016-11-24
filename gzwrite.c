@@ -81,7 +81,15 @@ local int gz_comp(state, flush)
 
     /* write directly if requested */
     if (state->direct) {
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The FILE*-based code is new by IntelliMagic; the
+ * file-descriptor-based code already existed. */
+#ifdef ZLIB_USE_FILE_POINTERS
+        got = fwrite(strm->next_in, 1, strm->avail_in, state->fp);
+#else
         got = write(state->fd, strm->next_in, strm->avail_in);
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
         if (got < 0 || (unsigned)got != strm->avail_in) {
             gz_error(state, Z_ERRNO, zstrerror());
             return -1;
@@ -98,7 +106,17 @@ local int gz_comp(state, flush)
         if (strm->avail_out == 0 || (flush != Z_NO_FLUSH &&
             (flush != Z_FINISH || ret == Z_STREAM_END))) {
             have = (unsigned)(strm->next_out - state->x.next);
-            if (have && ((got = write(state->fd, state->x.next, have)) < 0 ||
+            if (have && ((
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The FILE*-based code is new by IntelliMagic; the
+ * file-descriptor-based code already existed. */
+#ifdef ZLIB_USE_FILE_POINTERS
+                           got = fwrite(state->x.next, 1, have, state->fp)
+#else
+                           got = write(state->fd, state->x.next, have)
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+                         ) < 0 ||
                          (unsigned)got != have)) {
                 gz_error(state, Z_ERRNO, zstrerror());
                 return -1;
@@ -570,7 +588,17 @@ int ZEXPORT gzclose_w(file)
     }
     gz_error(state, Z_OK, NULL);
     free(state->path);
-    if (close(state->fd) == -1)
+    if (
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* The FILE*-based code is new by IntelliMagic; the
+ * file-descriptor-based code already existed. */
+#ifdef ZLIB_USE_FILE_POINTERS
+      fclose(state->fp)
+#else
+      close(state->fd)
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+      == -1)
         ret = Z_ERRNO;
     free(state);
     return ret;
