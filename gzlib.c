@@ -271,21 +271,21 @@ local gzFile gz_open(path, fd, mode)
         }
 #else
     oflag =
-#ifdef O_LARGEFILE
+#  ifdef O_LARGEFILE
         O_LARGEFILE |
-#endif
-#ifdef O_BINARY
+#  endif
+#  ifdef O_BINARY
         O_BINARY |
-#endif
-#ifdef O_CLOEXEC
+#  endif
+#  ifdef O_CLOEXEC
         (cloexec ? O_CLOEXEC : 0) |
-#endif
+#  endif
         (state->mode == GZ_READ ?
          O_RDONLY :
          (O_WRONLY | O_CREAT |
-#ifdef O_EXCL
+#  ifdef O_EXCL
           (exclusive ? O_EXCL : 0) |
-#endif
+#  endif
           (state->mode == GZ_WRITE ?
            O_TRUNC :
            O_APPEND)));
@@ -399,6 +399,14 @@ gzFile ZEXPORT gzopen64(path, mode)
 /* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
 #ifdef ZLIB_USE_FILE_POINTERS
 gzFile ZEXPORT gzopened(path, mode, fp)
+  const char *path;
+  const char *mode;
+  FILE *fp;
+{
+  return gz_open(path, -3, fp, mode);
+}
+
+gzFile ZEXPORT gzopened64(path, mode, fp)
   const char *path;
   const char *mode;
   FILE *fp;

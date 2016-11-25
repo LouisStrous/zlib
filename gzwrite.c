@@ -61,6 +61,25 @@ local int gz_init(state)
     return 0;
 }
 
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+#ifdef ZLIB_USE_FILE_POINTERS
+long WRITE(gz_statep state, unsigned char *data, size_t bytes)
+{
+  long ret;
+  size_t result;
+
+  result = fwrite(data, 1, bytes, state->fp);
+  if (!result && bytes > 0)
+    ret = -1;
+  else
+    ret = (long) result;
+  return ret;
+}
+#else
+#  define WRITE(state, data, bytes) write((state)->fd, (data), (bytes))
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+
 /* Compress whatever is at avail_in and next_in and write to the output file.
    Return -1 if there is an error writing to the output file, otherwise 0.
    flush is assumed to be a valid deflate() flush value.  If flush is Z_FINISH,
@@ -71,7 +90,13 @@ local int gz_comp(state, flush)
     gz_statep state;
     int flush;
 {
-    int ret, got;
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+  /* Changed 'got' type from int to long to avoid compiler warning
+   * about possible loss of accuracy when compiling for a 64-bit
+   * application */
+    int ret;
+    long got;
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
     unsigned have;
     z_streamp strm = &(state->strm);
 
@@ -82,13 +107,7 @@ local int gz_comp(state, flush)
     /* write directly if requested */
     if (state->direct) {
 /* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
-/* The FILE*-based code is new by IntelliMagic; the
- * file-descriptor-based code already existed. */
-#ifdef ZLIB_USE_FILE_POINTERS
-        got = fwrite(strm->next_in, 1, strm->avail_in, state->fp);
-#else
-        got = write(state->fd, strm->next_in, strm->avail_in);
-#endif
+        got = (long) WRITE(state, strm->next_in, strm->avail_in);
 /* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
         if (got < 0 || (unsigned)got != strm->avail_in) {
             gz_error(state, Z_ERRNO, zstrerror());
@@ -108,13 +127,7 @@ local int gz_comp(state, flush)
             have = (unsigned)(strm->next_out - state->x.next);
             if (have && ((
 /* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
-/* The FILE*-based code is new by IntelliMagic; the
- * file-descriptor-based code already existed. */
-#ifdef ZLIB_USE_FILE_POINTERS
-                           got = fwrite(state->x.next, 1, have, state->fp)
-#else
-                           got = write(state->fd, state->x.next, have)
-#endif
+                           got = (long) WRITE(state, state->x.next, have)
 /* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
                          ) < 0 ||
                          (unsigned)got != have)) {

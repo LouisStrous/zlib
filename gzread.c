@@ -13,6 +13,25 @@ local int gz_decomp OF((gz_statep));
 local int gz_fetch OF((gz_statep));
 local int gz_skip OF((gz_statep, z_off64_t));
 
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+#ifdef ZLIB_USE_FILE_POINTERS
+long READ(gz_statep state, unsigned char *data, size_t bytes)
+{
+  long ret;
+  size_t result;
+
+  result = fread(data, 1, bytes, state->fp);
+  if (!result && bytes > 0)
+    ret = -1;
+  else
+    ret = (long) result;
+  return ret;
+}
+#else
+#  define READ(state, data, bytes) read((state)->fd, (data), (bytes))
+#endif
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+
 /* Use read() to load a buffer -- return -1 on error, otherwise 0.  Read from
    state->fd, and update state->eof, state->err, and state->msg as appropriate.
    This function needs to loop on read(), since read() is not guaranteed to
@@ -23,18 +42,16 @@ local int gz_load(state, buf, len, have)
     unsigned len;
     unsigned *have;
 {
-    int ret;
+/* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
+/* Changed from int to long to avoid compiler warning about possible
+ * loss of accuracy when compiling for a 64-bit-application */
+    long ret;
+/* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
 
     *have = 0;
     do {
 /* START MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
-/* The FILE*-based code is new by IntelliMagic; the
- * file-descriptor-based code already existed. */
-#ifdef ZLIB_USE_FILE_POINTERS
-        ret = fread(buf + *have, 1, len - *have, state->fp);
-#else
-        ret = read(state->fd, buf + *have, len - *have);
-#endif
+        ret = (long) READ(state, buf + *have, len - *have);
 /* END MODIFICATION BY INTELLIMAGIC, info@intellimagic.com */
         if (ret <= 0)
             break;

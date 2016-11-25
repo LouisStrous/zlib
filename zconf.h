@@ -77,6 +77,10 @@
 #    ifdef _WIN32
 #      define gzopen_w              z_gzopen_w
 #    endif
+#    ifdef ZLIB_USE_FILE_POINTERS
+#      define gzopened            z_gzopened
+#      define gzopened64          z_gzopened64
+#    endif
 #    define gzprintf              z_gzprintf
 #    define gzvprintf             z_gzvprintf
 #    define gzputc                z_gzputc
